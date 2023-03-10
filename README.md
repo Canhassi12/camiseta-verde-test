@@ -1,66 +1,127 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Desafio Back-end PicPay
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Objetivo
 
-## About Laravel
+- Temos 2 tipos de usuários, os comuns e lojistas, ambos têm carteira com dinheiro e realizam transferências entre eles. 
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Ambos devem ter: 
+    > Nome Completo, CPF, e-mail e Senha. CPF/CNPJ e e-mails devem ser únicos no sistema.
+- Usuários podem enviar dinheiro (efetuar transferência) para lojistas e entre usuários. 
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- Lojistas **só recebem** transferências, não enviam dinheiro para ninguém.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Validar se o usuário tem saldo antes da transferência.
 
-## Learning Laravel
+- Antes de finalizar a transferência, deve-se consultar um serviço autorizador externo.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- A operação de transferência deve ser uma transação (ou seja, revertida em qualquer caso de inconsistência) e o dinheiro deve voltar para a carteira do usuário que envia. 
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+- No recebimento de pagamento, o usuário ou lojista precisa receber notificação (envio de email, sms) enviada por um serviço de terceiro. 
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- Este serviço deve ser RESTFul.
+  
+## Resolução
 
-## Laravel Sponsors
+- ### Modelagem de software
+    - Foram aplicados conceitos de ***DDD (Domain Driven Design),*** cujo objetivo é facilitar a implementação de regras de negócio e processos complexos, onde visa a divisão de responsabilidades por camadas.
+    <img style="width: 200px; height: 250px;" src="https://i.imgur.com/WeZGwmK.png">
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+    - Além de oferecer uma maior escalabilidade, organização no projeto e trazer uma linguagem ubíqua para os que se relacionarem com o código e suas idéias.
 
-### Premium Partners
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+- ### Modelagem de dados
+  - Por serem tratados dados sensíveis, tanto os dados dos usuarios/lojista tanto informações da carteira e transações, decidi usar `UUID` por proporcionar uma maior segurança.
 
-## Contributing
+  - Nas migrations do banco de dados foi utilizado o seguinte esquema:
+    
+    ```php
+    //User Migration
+    Schema::create('users', function (Blueprint $table) {
+        $table->uuid('id')->primary();
+        $table->string('name');
+        $table->string('email')->unique();
+        $table->string('cpf')->unique();
+        $table->string('password');
+        $table->timestamps();
+    });
+    //SellerMigration
+    Schema::create('sellers', function (Blueprint $table) {
+        $table->uuid('id')->primary();
+        $table->string('name');
+        $table->string('email')->unique();
+        $table->string('cpf')->unique();
+        $table->string('password');
+        $table->rememberToken();
+        $table->timestamps();
+    });
+    //TransactionMigration
+    Schema::create('transactions', function (Blueprint $table) {
+        $table->uuid('id')->primary();
+        $table->string('payer_id')->constrained('users');
+        $table->string('payee_id')->references('owner_id')->on('wallets');
+        $table->bigInteger('amount');
+        $table->timestamps();
+    });
+    //WalletMigration
+    Schema::create('wallets', function (Blueprint $table) {
+        $table->uuid('id')->primary();
+        $table->bigInteger('balance');
+        $table->foreignUuid('owner_id');
+        $table->timestamps();
+    });
+    
+    //OutboxMigration
+    Schema::create('outboxes', function (Blueprint $table) {
+        $table->id();
+        $table->string('transaction_id');
+        $table->string('type');
+        $table->json('payload')->nullable();
+        $table->unsignedBigInteger('attempts')->default(0);
+        $table->timestamps();
+    });
+     
+    //JobMigration 
+    Schema::create('jobs', function (Blueprint $table) {
+        $table->bigIncrements('id');
+        $table->string('queue')->index();
+        $table->longText('payload');
+        $table->unsignedTinyInteger('attempts');
+        $table->unsignedInteger('reserved_at')->nullable();
+        $table->unsignedInteger('available_at');
+        $table->unsignedInteger('created_at');
+    });
+    ```
+  - Usando o `Unique()` ja não temos os problemas de usuarios e lojistas com e-mail, CPF/CNPJ repetidos.
+  - Temos camadas de repositório para lidar com as queries(consultas) no banco de dados.
+- Foram aplicados também conceitos de [SOLID](https://www.digitalocean.com/community/conceptual-articles/s-o-l-i-d-the-first-five-principles-of-object-oriented-design). Como Single Responsibility Principle, Dependency Inversion Principle, Open-Closed Principle. 
+- Para o serviço de envios notificações foi utilizado [Outbox Pattern](https://medium.com/event-driven-utopia/sending-reliable-event-notifications-with-transactional-outbox-pattern-7a7c69158d1b), para não ocorrer falhas nos processos de transações. Com a solução de serviço assíncrono, utilizando Jobs e queues.
+- Em ambos os serviços temos uma camada para tentativas(Retry pattern), para caso as requisições falharem por alguma inconsistência na API. Usando conceitos de [Back-Off](https://aws.amazon.com/pt/blogs/architecture/exponential-backoff-and-jitter/) e [Jitter](https://aws.amazon.com/pt/blogs/architecture/exponential-backoff-and-jitter/), será feito 3 tentativas e conforme haver falhas terá um tempo de aguardo para as proximas requisições, e não sobrecarregar mais as API's.
+- Tratamentos de erros e Logs dos processos.  
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Como rodar o projeto
+    1 - git clone https://github.com/Canhassi12/camiseta-verde-test.git
+    2 - composer install
+    3 - Renomear .env.example para .env
+    4 - php artisan key:generate
+    5 - Crie um banco de dados para o projeto
+    6 - Dentro do arquivo .env, coloque o nome do banco no campo DB_DATABASE="".
 
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- ### Testes
+  - Os testes feitos, cobrem com eficácia os códigos escritos e os possíveis erros, usando também ***`MOCK`*** de dados para os testes de repositório, e nas requisições tanto do autorizador externo, tanto o de notificação.
+  - #### Como rodar os testes
+    ``` bash 
+    $ php artisan test
+    ```
+  - Para enviar os emails na fila é necessario rodar os seguites comandos:
+    ``` bash 
+    $ php artisan queue:work
+    $ php artisan schedule:run  
+    ```
+## Referêcias
+[GuzzleHttp](https://docs.guzzlephp.org/en/stable/) <br>
+[Laravel Docs](https://laravel.com/docs/9.x) <br>
+[DDD](https://fullcycle.com.br/domain-driven-design/) <br>
+[DDD](https://medium.com/saga-do-programador/camada-de-aplicação-domain-driven-design-e-isolamento-do-domínio-55348fbf1a26) <br>
+[Onion Architecture](https://medium.com/expedia-group-tech/onion-architecture-deed8a554423) <br>
+[Onion Architecture](https://medium.com/expedia-group-tech/onion-architecture-deed8a554423) <br>
+[Outbox Pattern](https://medium.com/event-driven-utopia/sending-reliable-event-notifications-with-transactional-outbox-pattern-7a7c69158d1b)
