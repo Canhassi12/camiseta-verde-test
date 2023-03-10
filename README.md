@@ -24,7 +24,7 @@
 
 - ### Modelagem de software
     - Foram aplicados conceitos de ***DDD (Domain Driven Design),*** cujo objetivo é facilitar a implementação de regras de negócio e processos complexos, onde visa a divisão de responsabilidades por camadas.
-    <img style="width: 200px; height: 250px;" src="https://i.imgur.com/WeZGwmK.png">
+    <img style="width: 200px; height: 250px;" src="https://imgur.com/REp1CgQ.png">
 
     - Além de oferecer uma maior escalabilidade, organização no projeto e trazer uma linguagem ubíqua para os que se relacionarem com o código e suas idéias.
 
@@ -32,12 +32,12 @@
 - ### Modelagem de dados
   - Por serem tratados dados sensíveis, tanto os dados dos usuarios/lojista tanto informações da carteira e transações, decidi usar `UUID` por proporcionar uma maior segurança.
 
-- Usando o `Unique()` ja não temos os problemas de usuarios e lojistas com e-mail, CPF/CNPJ repetidos.
-- Temos camadas de repositório para lidar com as queries(consultas) no banco de dados.
-- Foram aplicados também conceitos de [SOLID](https://www.digitalocean.com/community/conceptual-articles/s-o-l-i-d-the-first-five-principles-of-object-oriented-design). Como Single Responsibility Principle, Dependency Inversion Principle, Open-Closed Principle. 
-- Para o serviço de envios notificações foi utilizado [Outbox Pattern](https://medium.com/event-driven-utopia/sending-reliable-event-notifications-with-transactional-outbox-pattern-7a7c69158d1b), para não ocorrer falhas nos processos de transações. Com a solução de serviço assíncrono, utilizando Jobs e queues.
-- Em ambos os serviços temos uma camada para tentativas(Retry pattern), para caso as requisições falharem por alguma inconsistência na API. Usando conceitos de [Back-Off](https://aws.amazon.com/pt/blogs/architecture/exponential-backoff-and-jitter/) e [Jitter](https://aws.amazon.com/pt/blogs/architecture/exponential-backoff-and-jitter/), será feito 3 tentativas e conforme haver falhas terá um tempo de aguardo para as proximas requisições, e não sobrecarregar mais as API's.
-- Tratamentos de erros e Logs dos processos.  
+  - Usando o `Unique()` ja não temos os problemas de usuarios e lojistas com e-mail, CPF/CNPJ repetidos.
+  - Temos camadas de repositório para lidar com as queries(consultas) no banco de dados.
+  - Foram aplicados também conceitos de [SOLID](https://www.digitalocean.com/community/conceptual-articles/s-o-l-i-d-the-first-five-principles-of-object-oriented-design). Como Single Responsibility Principle, Dependency Inversion Principle, Open-Closed Principle. 
+  - Para o serviço de envios notificações foi utilizado [Outbox Pattern](https://medium.com/event-driven-utopia/sending-reliable-event-notifications-with-transactional-outbox-pattern-7a7c69158d1b), para não ocorrer falhas nos processos de transações. Com a solução de serviço assíncrono, utilizando Jobs e queues.
+  - Em ambos os serviços temos uma camada para tentativas(Retry pattern), para caso as requisições falharem por alguma inconsistência na API. Usando conceitos de [Back-Off](https://aws.amazon.com/pt/blogs/architecture/exponential-backoff-and-jitter/) e [Jitter](https://aws.amazon.com/pt/blogs/architecture/exponential-backoff-and-jitter/), será feito 3 tentativas e conforme haver falhas terá um tempo de aguardo para as proximas requisições, e não sobrecarregar mais as API's.
+  - Tratamentos de erros e Logs dos processos.  
 
 ## Como rodar o projeto
     1 - git clone https://github.com/Canhassi12/camiseta-verde-test.git
@@ -55,7 +55,6 @@
     ```
   - Para enviar os emails na fila é necessario rodar os seguites comandos:
     ``` bash 
-    $ php artisan queue:work
     $ php artisan schedule:run  
     ```
 ## Referêcias
