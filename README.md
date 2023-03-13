@@ -1,4 +1,4 @@
-# Desafio Back-end
+# Desafio Back-end Picpay
 
 ## Objetivo
 
